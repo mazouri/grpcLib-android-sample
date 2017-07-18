@@ -24,27 +24,15 @@ public class HelloServer {
 
     public static void main(String[] args ) throws Exception {
         final HelloServer server = new HelloServer();
-        server.parseArgs(args);
+//        server.parseArgs(args);
         if (server.useTls) {
             System.out.println(
                     "\nUsing fake CA for TLS certificate. Test clients should expect host\n"
                             + "*.test.google.fr and our test CA. For the Java test client binary, use:\n"
                             + "--server_host_override=foo.test.google.fr --use_test_ca=true\n");
         }
-
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                try {
-                    System.out.println("Shutting down");
-                    server.stop();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
         server.start();
-        System.out.println("HelloServer started on port " + server.port);
+        server.blockUnitilShutdown();
     }
 
     private void parseArgs(String[] args) {
@@ -97,9 +85,30 @@ public class HelloServer {
 
     private void start() throws Exception {
         executor = Executors.newSingleThreadScheduledExecutor();
-        server = ServerBuilder.forPort(port)
+        server = ServerBuilder.forPort(port)  //host:ip:10.75.75.106
                 .addService(new GreeterImpl())
                 .build().start();
+
+        System.out.println("HelloServer started on port " + port);
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    System.out.println("Shutting down");
+                    HelloServer.this.stop();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+    }
+
+    private void blockUnitilShutdown() throws InterruptedException {
+        if (server != null) {
+            server.awaitTermination();
+        }
     }
 
     private void stop() throws Exception {
